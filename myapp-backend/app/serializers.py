@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
-from .models import Video, UserVideoList, VideoProgress
+from .models import Video, UserVideoList, VideoProgress, VideoProgressInterval
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
@@ -18,7 +18,7 @@ class VideoSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Video
-        fields = ['id', 'title', 'description', 'video_file', 'uploaded_by', 'created_at']
+        fields = ['id', 'title', 'description', 'video_file', 'uploaded_by', 'created_at', 'duration']
 
 class UserVideoListSerializer(serializers.ModelSerializer):
     video = VideoSerializer(read_only=True)
@@ -30,12 +30,18 @@ class UserVideoListSerializer(serializers.ModelSerializer):
         model = UserVideoList
         fields = ['id', 'user', 'video', 'video_id', 'added_at']
 
+class VideoProgressIntervalSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = VideoProgressInterval
+        fields = ['id', 'start_time', 'end_time']
+
 class VideoProgressSerializer(serializers.ModelSerializer):
     video = VideoSerializer(read_only=True)
     video_id = serializers.PrimaryKeyRelatedField(
         queryset=Video.objects.all(), source='video', write_only=True
     )
+    intervals = VideoProgressIntervalSerializer(many=True, read_only=True)
 
     class Meta:
         model = VideoProgress
-        fields = ['id', 'user', 'video', 'video_id', 'progress', 'last_updated']
+        fields = ['id', 'user', 'video', 'video_id', 'progress', 'last_watched_position', 'last_updated', 'intervals']
