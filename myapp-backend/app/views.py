@@ -3,7 +3,9 @@ from rest_framework.authtoken.views import ObtainAuthToken
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.authtoken.models import Token
+from rest_framework.decorators import action
 from django.contrib.auth import authenticate
+from django.contrib.auth.models import User
 from .models import Video
 from .serializers import UserSerializer, VideoSerializer
 
@@ -24,6 +26,27 @@ class CustomAuthToken(ObtainAuthToken):
             return Response({
                 'error': 'Invalid username or password'
             }, status=status.HTTP_401_UNAUTHORIZED)
+
+class UserViewSet(viewsets.ModelViewSet):
+    queryset = User.objects.all()
+    serializer_class = UserSerializer
+    permission_classes = [permissions.AllowAny]
+
+    @action(detail=False, methods=['post'], permission_classes=[permissions.AllowAny])
+    def register(self, request):
+        serializer = self.get_serializer(data=request.data)
+        if serializer.is_valid():
+            user = serializer.save()
+            token, created = Token.objects.get_or_create(user=user)
+            return Response({
+                'token': token.key,
+                'user_id': user.id,
+                'username': user.username,
+                'is_admin': user.is_staff,
+            }, status=status.HTTP_201_CREATED)
+        return Response({
+            'error': serializer.errors
+        }, status=status.HTTP_400_BAD_REQUEST)
 
 class VideoViewSet(viewsets.ModelViewSet):
     queryset = Video.objects.all()
