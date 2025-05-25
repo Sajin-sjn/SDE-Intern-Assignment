@@ -58,14 +58,10 @@ class VideoViewSet(viewsets.ModelViewSet):
     queryset = Video.objects.all()
     serializer_class = VideoSerializer
 
-    print(queryset,"????????????????")
-
     def get_permissions(self):
         if self.action in ['create', 'update', 'partial_update', 'destroy']:
             return [permissions.IsAdminUser()]
-        if self.action in ['retrieve', 'list']:
-            return [permissions.IsAuthenticated(), IsInUserVideoList()]
-        return [permissions.IsAuthenticatedOrReadOnly()]
+        return [permissions.IsAuthenticated()]
 
     def perform_create(self, serializer):
         serializer.save(uploaded_by=self.request.user)
@@ -96,14 +92,13 @@ class UserVideoListViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         return UserVideoList.objects.filter(user=self.request.user)
 
-    def perform_create(self, serializer):
-        serializer.save(user=self.request.user)
-
     def create(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
+        serializer = self.get_serializer(data=request.data, context={'request': request})
         if serializer.is_valid():
-            serializer.save(user=self.request.user)
+            serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
+        print("Request data:", request.data)
+        print("Serializer errors:", serializer.errors)
         return Response({
             'error': serializer.errors
         }, status=status.HTTP_400_BAD_REQUEST)
@@ -112,6 +107,15 @@ class UserVideoListViewSet(viewsets.ModelViewSet):
         instance = self.get_object()
         instance.delete()
         return Response({'message': 'Video removed from list'}, status=status.HTTP_204_NO_CONTENT)
+
+    @action(detail=True, methods=['delete'], url_path='remove')
+    def remove(self, request, pk=None):
+        try:
+            user_video = UserVideoList.objects.get(user=request.user, video__id=pk)
+            user_video.delete()
+            return Response({'message': 'Video removed from list'}, status=status.HTTP_204_NO_CONTENT)
+        except UserVideoList.DoesNotExist:
+            return Response({'error': 'Video not in list'}, status=status.HTTP_404_NOT_FOUND)
 
 class VideoProgressViewSet(viewsets.ModelViewSet):
     serializer_class = VideoProgressSerializer
@@ -126,8 +130,8 @@ class VideoProgressViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['post'], permission_classes=[permissions.IsAuthenticated])
     def update_progress(self, request):
         video_id = request.data.get('video_id')
-        current_time = request.data.get('current_time')  # Last watched position
-        intervals = request.data.get('intervals', [])    # List of {start_time, end_time}
+        current_time = request.data.get('current_time')
+        intervals = request.data.get('intervals', [])
 
         if not video_id:
             return Response({
@@ -152,15 +156,13 @@ class VideoProgressViewSet(viewsets.ModelViewSet):
             defaults={'progress': 0.0, 'last_watched_position': 0.0}
         )
 
-        # Update last watched position
         try:
             current_time = float(current_time) if current_time is not None else progress.last_watched_position
             if 0 <= current_time <= video.duration:
                 progress.last_watched_position = current_time
         except (ValueError, TypeError):
-            pass  # Keep existing last_watched_position
+            pass
 
-        # Process intervals
         saved_intervals = []
         for interval in intervals:
             start_time = interval.get('start_time')
@@ -186,9 +188,8 @@ class VideoProgressViewSet(viewsets.ModelViewSet):
                 )
                 saved_intervals.append(interval_obj)
             except ValidationError:
-                continue  # Skip redundant/overlapping intervals
+                continue
 
-        # Recalculate progress
         intervals = [(interval.start_time, interval.end_time) for interval in progress.intervals.all()]
         unique_duration = calculate_unique_duration(intervals)
         progress.progress = (unique_duration / video.duration) * 100 if video.duration > 0 else 0

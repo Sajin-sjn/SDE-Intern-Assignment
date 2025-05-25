@@ -1,19 +1,20 @@
-def merge_intervals(intervals, gap_tolerance=1.0):
+def merge_intervals(intervals):
     if not intervals:
         return []
     sorted_intervals = sorted(intervals, key=lambda x: x[0])
     merged = []
-    current = sorted_intervals[0]
+    current_interval = list(sorted_intervals[0])
     
     for interval in sorted_intervals[1:]:
-        if interval[0] <= current[1] + gap_tolerance:
-            current[1] = max(current[1], interval[1])
+        if interval[0] <= current_interval[1]:
+            current_interval[1] = max(current_interval[1], interval[1])
         else:
-            merged.append(current)
-            current = interval
-    merged.append(current)
+            merged.append(current_interval)
+            current_interval = list(interval)
+    
+    merged.append(current_interval)
     return merged
 
-def calculate_unique_duration(intervals, gap_tolerance=1.0):
-    merged = merge_intervals(intervals, gap_tolerance)
-    return sum(end - start for start, end in merged)
+def calculate_unique_duration(intervals):
+    merged = merge_intervals(intervals)
+    return sum(interval[1] - interval[0] for interval in merged)
