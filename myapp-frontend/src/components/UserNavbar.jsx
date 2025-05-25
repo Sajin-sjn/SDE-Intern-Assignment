@@ -35,6 +35,11 @@ function UserNavbar() {
               </Link>
             </li>
             <li className="nav-item">
+              <Link className="nav-link" to="/my-list">
+                My List
+              </Link>
+            </li>
+            <li className="nav-item">
               <span className="nav-link">{user?.username}</span>
             </li>
             <li className="nav-item">

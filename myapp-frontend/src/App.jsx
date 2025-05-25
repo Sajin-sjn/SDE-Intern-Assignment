@@ -12,6 +12,7 @@ import Login from './pages/Login'
 import Admin from './pages/Admin'
 import Dashboard from './pages/Dashboard'
 import ManageVideos from './pages/ManageVideos'
+import MyList from './pages/MyList'
 
 function App() {
   const { user } = useContext(AuthContext)
@@ -36,6 +37,14 @@ function App() {
             <ProtectedRoute>
               <Login />
             </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/my-list"
+          element={
+            <AuthRoute userOnly>
+              <MyList />
+            </AuthRoute>
           }
         />
         <Route

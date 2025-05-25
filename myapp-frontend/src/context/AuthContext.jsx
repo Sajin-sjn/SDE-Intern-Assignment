@@ -50,10 +50,11 @@ export const AuthProvider = ({ children }) => {
       console.log('User state updated:', user, 'current path:', location.pathname)
       localStorage.setItem('user', JSON.stringify(user))
       const validAdminRoutes = ['/admin', '/admin_manage_videos']
+      const validUserRoutes = ['/dashboard', '/my-list']
       if (user.is_admin && !validAdminRoutes.includes(location.pathname)) {
         console.log('Redirecting admin to /admin')
         navigate('/admin')
-      } else if (!user.is_admin && location.pathname !== '/dashboard') {
+      } else if (!user.is_admin && !validUserRoutes.includes(location.pathname)) {
         console.log('Redirecting non-admin to /dashboard')
         navigate('/dashboard')
       }
