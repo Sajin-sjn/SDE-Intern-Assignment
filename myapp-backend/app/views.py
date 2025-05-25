@@ -7,6 +7,7 @@ from django.contrib.auth import authenticate
 from rest_framework.authtoken.models import Token
 from rest_framework.exceptions import ValidationError
 from django.contrib.auth.models import User
+from django.db import transaction
 from .models import Video, UserVideoList, VideoProgress, VideoProgressInterval
 from .serializers import UserSerializer, VideoSerializer, UserVideoListSerializer, VideoProgressSerializer, VideoProgressIntervalSerializer
 from .utils import merge_intervals, calculate_unique_duration
@@ -163,37 +164,51 @@ class VideoProgressViewSet(viewsets.ModelViewSet):
         except (ValueError, TypeError):
             pass
 
-        saved_intervals = []
+        # Collect new intervals
+        new_intervals = []
         for interval in intervals:
-            start_time = interval.get('start_time')
-            end_time = interval.get('end_time')
-
-            if start_time is None or end_time is None:
-                continue
-
             try:
-                start_time = float(start_time)
-                end_time = float(end_time)
-            except (ValueError, TypeError):
+                start_time = float(interval.get('start_time'))
+                end_time = float(interval.get('end_time'))
+                if start_time is None or end_time is None:
+                    continue
+                if start_time < 0 or end_time > video.duration or start_time >= end_time:
+                    continue
+                new_intervals.append((start_time, end_time))
+            except (ValueError, TypeError, AttributeError):
                 continue
 
-            if start_time < 0 or end_time > video.duration or start_time >= end_time:
-                continue
+        with transaction.atomic():
+            # Get existing intervals
+            existing_intervals = [(i.start_time, i.end_time) for i in progress.intervals.all()]
+            print(f"Video {video_id} - Existing intervals: {existing_intervals}, New intervals: {new_intervals}")  # Debug
 
+            # Merge all intervals
+            all_intervals = merge_intervals(existing_intervals + new_intervals)
+            print(f"Video {video_id} - Merged intervals: {all_intervals}")  # Debug
+
+            # Clear existing intervals
+            progress.intervals.all().delete()
+
+            # Save merged intervals
             try:
-                interval_obj = VideoProgressInterval.objects.create(
-                    progress=progress,
-                    start_time=start_time,
-                    end_time=end_time
-                )
-                saved_intervals.append(interval_obj)
-            except ValidationError:
-                continue
+                for start, end in all_intervals:
+                    interval_obj = VideoProgressInterval(
+                        progress=progress,
+                        start_time=start,
+                        end_time=end
+                    )
+                    interval_obj.clean()  # Validate before saving
+                    interval_obj.save()
+            except ValidationError as e:
+                print(f"Video {video_id} - Validation error: {str(e)}")  # Debug
+                return Response({
+                    'error': f'Invalid intervals: {str(e)}'
+                }, status=status.HTTP_400_BAD_REQUEST)
 
-        intervals = [(interval.start_time, interval.end_time) for interval in progress.intervals.all()]
-        unique_duration = calculate_unique_duration(intervals)
-        progress.progress = (unique_duration / video.duration) * 100 if video.duration > 0 else 0
-        progress.save()
+            unique_duration = calculate_unique_duration(all_intervals)
+            progress.progress = (unique_duration / video.duration) * 100 if video.duration > 0 else 0
+            progress.save()
 
         serializer = self.get_serializer(progress)
         return Response(serializer.data, status=status.HTTP_200_OK)
