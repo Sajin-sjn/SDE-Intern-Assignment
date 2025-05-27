@@ -1,124 +1,130 @@
-import { useState, useEffect, useContext } from 'react'
-import axios from 'axios'
-import { AuthContext } from '../context/AuthContext'
+import { useState, useEffect, useContext } from 'react';
+import axios from 'axios';
+import { AuthContext } from '../context/AuthContext';
 
 function ManageVideos() {
-  const { user } = useContext(AuthContext)
-  console.log('ManageVideos rendering, user:', user, 'path:', window.location.pathname)
+  const { user } = useContext(AuthContext);
+  console.log('[ManageVideos] Rendering, user:', user, 'path:', window.location.pathname);
 
   const [formData, setFormData] = useState({
     title: '',
     description: '',
     video_file: null,
     duration: '',
-  })
-  const [videos, setVideos] = useState([])
-  const [editVideo, setEditVideo] = useState(null)
-  const [error, setError] = useState('')
-  const [successMessage, setSuccessMessage] = useState('')
-  const [loading, setLoading] = useState(false)
+  });
+  const [videos, setVideos] = useState([]);
+  const [editVideo, setEditVideo] = useState(null);
+  const [error, setError] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    console.log('Fetching videos...')
-    setLoading(true)
-    const source = axios.CancelToken.source()
+    console.log('[ManageVideos] Fetching videos...');
+    setLoading(true);
+    const source = axios.CancelToken.source();
 
     axios
       .get('http://localhost:8000/api/videos/', { cancelToken: source.token })
       .then((response) => {
-        console.log('Fetched videos:', response.data)
-        setVideos(response.data)
-        setLoading(false)
+        console.log('[ManageVideos] Fetched videos:', response.data);
+        setVideos(response.data);
+        setError(''); // Clear any previous error
+        setLoading(false);
       })
       .catch((err) => {
         if (axios.isCancel(err)) {
-          console.log('Fetch cancelled')
+          console.log('[ManageVideos] Fetch cancelled');
         } else {
-          console.error('Error fetching videos:', err.response?.data)
-          setError('Failed to load videos')
-          setLoading(false)
+          console.error('[ManageVideos] Error fetching videos:', {
+            message: err.message,
+            status: err.response?.status,
+            data: err.response?.data,
+          });
+          setError('Failed to load videos');
+          setLoading(false);
         }
-      })
+      });
 
     return () => {
-      source.cancel('Component unmounted')
-    }
-  }, [])
+      console.log('[ManageVideos] Cancelling fetch on unmount');
+      source.cancel('Component unmounted');
+    };
+  }, []);
 
   const handleChange = (e) => {
-    const { name, value, files } = e.target
+    const { name, value, files } = e.target;
     setFormData({
       ...formData,
       [name]: files ? files[0] : value,
-    })
-  }
+    });
+  };
 
   const handleSubmit = async (e) => {
-    e.preventDefault()
+    e.preventDefault();
     if (!formData.title || !formData.duration || (!formData.video_file && !editVideo)) {
-      setError('Title, duration, and video file are required')
-      return
+      setError('Title, duration, and video file are required');
+      return;
     }
-    setLoading(true)
-    const data = new FormData()
-    data.append('title', formData.title)
-    data.append('description', formData.description || '')
+    setLoading(true);
+    const data = new FormData();
+    data.append('title', formData.title);
+    data.append('description', formData.description || '');
     if (formData.video_file) {
-      data.append('video_file', formData.video_file)
+      data.append('video_file', formData.video_file);
     }
-    data.append('duration', parseFloat(formData.duration))
+    data.append('duration', parseFloat(formData.duration));
 
     try {
       if (editVideo) {
         const response = await axios.patch(`http://localhost:8000/api/videos/${editVideo.id}/`, data, {
           headers: { 'Content-Type': 'multipart/form-data' },
-        })
-        setVideos(videos.map((v) => (v.id === editVideo.id ? response.data : v)))
-        setSuccessMessage('Video updated successfully')
-        setEditVideo(null)
+        });
+        setVideos(videos.map((v) => (v.id === editVideo.id ? response.data : v)));
+        setSuccessMessage('Video updated successfully');
+        setEditVideo(null);
       } else {
         const response = await axios.post('http://localhost:8000/api/videos/', data, {
           headers: { 'Content-Type': 'multipart/form-data' },
-        })
-        setVideos([...videos, response.data])
-        setSuccessMessage('Video added successfully')
+        });
+        setVideos([...videos, response.data]);
+        setSuccessMessage('Video added successfully');
       }
-      setFormData({ title: '', description: '', video_file: null, duration: '' })
-      setError('')
-      setTimeout(() => setSuccessMessage(''), 3000)
+      setFormData({ title: '', description: '', video_file: null, duration: '' });
+      setError('');
+      setTimeout(() => setSuccessMessage(''), 3000);
     } catch (err) {
-      console.error('Error saving video:', err.response?.data)
-      setError(err.response?.data?.error || 'Failed to save video')
+      console.error('[ManageVideos] Error saving video:', err.response?.data);
+      setError(err.response?.data?.error || 'Failed to save video');
     }
-    setLoading(false)
-  }
+    setLoading(false);
+  };
 
   const handleEdit = (video) => {
-    setEditVideo(video)
+    setEditVideo(video);
     setFormData({
       title: video.title,
       description: video.description,
       video_file: null,
       duration: video.duration.toString(),
-    })
-    setError('')
-    setSuccessMessage('')
-  }
+    });
+    setError('');
+    setSuccessMessage('');
+  };
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this video?')) return
-    setLoading(true)
+    if (!window.confirm('Are you sure you want to delete this video?')) return;
+    setLoading(true);
     try {
-      await axios.delete(`http://localhost:8000/api/videos/${id}/`)
-      setVideos(videos.filter((v) => v.id !== id))
-      setSuccessMessage('Video deleted successfully')
-      setTimeout(() => setSuccessMessage(''), 3000)
+      await axios.delete(`http://localhost:8000/api/videos/${id}/`);
+      setVideos(videos.filter((v) => v.id !== id));
+      setSuccessMessage('Video deleted successfully');
+      setTimeout(() => setSuccessMessage(''), 3000);
     } catch (err) {
-      console.error('Error deleting video:', err.response?.data)
-      setError(err.response?.data?.error || 'Failed to delete video')
+      console.error('[ManageVideos] Error deleting video:', err.response?.data);
+      setError(err.response?.data?.error || 'Failed to delete video');
     }
-    setLoading(false)
-  }
+    setLoading(false);
+  };
 
   const formatDate = (dateString) => {
     return new Date(dateString).toLocaleString('en-US', {
@@ -128,14 +134,14 @@ function ManageVideos() {
       hour: 'numeric',
       minute: 'numeric',
       hour12: true,
-    })
-  }
+    });
+  };
 
   const formatDuration = (seconds) => {
-    const mins = Math.floor(seconds / 60)
-    const secs = Math.floor(seconds % 60)
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
-  }
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
 
   return (
     <div className="container py-5" style={{ background: '#f0f0f0', minHeight: '100vh' }}>
@@ -217,9 +223,9 @@ function ManageVideos() {
                 type="button"
                 className="btn btn-secondary"
                 onClick={() => {
-                  setEditVideo(null)
-                  setFormData({ title: '', description: '', video_file: null, duration: '' })
-                  setError('')
+                  setEditVideo(null);
+                  setFormData({ title: '', description: '', video_file: null, duration: '' });
+                  setError('');
                 }}
                 disabled={loading}
               >
@@ -275,7 +281,7 @@ function ManageVideos() {
         )}
       </div>
     </div>
-  )
+  );
 }
 
-export default ManageVideos
+export default ManageVideos;
