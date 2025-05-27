@@ -92,7 +92,7 @@ export const AuthProvider = ({ children }) => {
         password,
       })
       const { token, username: userName, user_id, is_admin } = response.data
-      console.log('Login response:', { token, userName, user_id, is_admin })
+      console.log('Login response:', {token, userName, user_id, is_admin})
       setToken(token)
       setUser({ id: user_id, username: userName, is_admin })
       localStorage.setItem('token', token)
@@ -117,9 +117,26 @@ export const AuthProvider = ({ children }) => {
       setLoading(false)
       return { success: true, message: 'Registration successful' }
     } catch (error) {
-      console.error('Register error:', error.response?.data)
+      console.error('Register error:', JSON.stringify(error.response?.data, null, 2))
       setLoading(false)
-      return { success: false, error: error.response?.data?.error || 'Registration failed' }
+      const errorData = error.response?.data?.error
+      let errorMessage = 'Registration failed'
+      if (errorData && typeof errorData === 'object') {
+        if (Array.isArray(errorData.username) && errorData.username.length > 0) {
+          errorMessage = errorData.username[0].includes('already exists')
+            ? 'Username already exists. Please choose another.'
+            : errorData.username.join('; ')
+        } else if (Array.isArray(errorData.email) && errorData.email.length > 0) {
+          errorMessage = errorData.email.join('; ')
+        } else if (Array.isArray(errorData.non_field_errors) && errorData.non_field_errors.length > 0) {
+          errorMessage = errorData.non_field_errors.join('; ')
+        } else {
+          errorMessage = Object.values(errorData).flat().join('; ')
+        }
+      } else {
+        errorMessage = errorData || 'Registration failed'
+      }
+      return { success: false, error: errorMessage }
     }
   }
 
