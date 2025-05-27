@@ -46,7 +46,9 @@ MIDDLEWARE = [
 CORS_ALLOWED_ORIGINS = [
     'http://localhost:3000',
     'http://localhost:5173',
+    'https://myapp-frontend-u327.onrender.com',  # ✅ Add your actual frontend Render URL here
 ]
+
 
 # Django REST Framework configuration
 REST_FRAMEWORK = {
