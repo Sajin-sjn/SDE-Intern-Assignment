@@ -1,44 +1,48 @@
-import { useState, useContext } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
-import { AuthContext } from '../context/AuthContext'
+import { useState, useContext } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { AuthContext } from '../context/AuthContext';
 
 function SignUp() {
   const [formData, setFormData] = useState({
     username: '',
     email: '',
     password: '',
-  })
-  const [error, setError] = useState('')
-  const [showModal, setShowModal] = useState(false)
-  const { register, loading } = useContext(AuthContext)
-  const navigate = useNavigate()
+  });
+  const { register, loading } = useContext(AuthContext);
+  const navigate = useNavigate();
 
   const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value })
-  }
+    setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+    console.log('[SignUp] Form data updated:', { ...formData, [e.target.name]: e.target.value });
+  };
 
   const handleSubmit = async (e) => {
-    e.preventDefault()
+    e.preventDefault();
+    console.log('[SignUp] Form submitted with data:', formData);
     if (!formData.username || !formData.email || !formData.password) {
-      setError('All fields are required')
-      setShowModal(true)
-      return
+      alert('All fields are required');
+      console.log('[SignUp] Client-side validation failed: All fields are required');
+      return;
     }
-    const result = await register(formData.username, formData.email, formData.password)
-    console.log('Registration result:', result) // Debug
-    if (result.success) {
-      setFormData({ username: '', email: '', password: '' })
-      navigate('/login?success=true')
-    } else {
-      setError(typeof result.error === 'string' ? result.error : 'Registration failed')
-      setShowModal(true)
-    }
-  }
 
-  const handleCloseModal = () => {
-    setShowModal(false)
-    setError('')
-  }
+    try {
+      console.log('[SignUp] Calling register with:', formData);
+      const result = await register(formData.username, formData.email, formData.password);
+      console.log('[SignUp] Registration result received:', result);
+
+      if (result.success) {
+        console.log('[SignUp] Registration successful, clearing form and navigating to /login');
+        setFormData({ username: '', email: '', password: '' });
+        navigate('/login?success=true');
+      } else {
+        console.log('[SignUp] Registration failed, showing alert:', result.error);
+        alert(typeof result.error === 'string' ? result.error : 'Registration failed');
+      }
+    } catch (err) {
+      console.error('[SignUp] Unexpected error during registration:', err);
+      alert('An unexpected error occurred');
+    }
+  };
 
   return (
     <div className="d-flex flex-column align-items-center justify-content-center min-vh-100 bg-light">
@@ -102,30 +106,8 @@ function SignUp() {
           Already have an account? <Link to="/login" className="text-primary">Login</Link>
         </p>
       </div>
-
-      {/* Bootstrap Modal for Error Pop-Up */}
-      {showModal && (
-        <div className="modal show d-block" tabIndex="-1" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
-          <div className="modal-dialog">
-            <div className="modal-content">
-              <div className="modal-header">
-                <h5 className="modal-title">Registration Error</h5>
-                <button type="button" className="btn-close" onClick={handleCloseModal}></button>
-              </div>
-              <div className="modal-body">
-                <p>{error}</p>
-              </div>
-              <div className="modal-footer">
-                <button type="button" className="btn btn-secondary" onClick={handleCloseModal}>
-                  Close
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
-  )
+  );
 }
 
-export default SignUp
+export default SignUp;
