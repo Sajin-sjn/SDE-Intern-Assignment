@@ -59,11 +59,35 @@ function MyList() {
           startTime: null,
           pendingIntervals: [],
           lastSavedTime: 0,
-          videoElement: null
+          videoElement: null,
+          lastSavedPosition: 0
         }
       }
     })
   }, [videos])
+
+  // Save progress on page unload
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      Object.keys(playbackData.current).forEach((videoId) => {
+        const data = playbackData.current[videoId]
+        if (data.videoElement && data.lastSavedPosition > 0) {
+          saveProgress(videoId, data.lastSavedPosition)
+        }
+      })
+    }
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload)
+      // Save progress for all videos on component unmount
+      Object.keys(playbackData.current).forEach((videoId) => {
+        const data = playbackData.current[videoId]
+        if (data.videoElement && data.lastSavedPosition > 0) {
+          saveProgress(videoId, data.lastSavedPosition)
+        }
+      })
+    }
+  }, [])
 
   // Handle Remove from List
   const handleRemoveFromList = async (videoId) => {
@@ -98,21 +122,19 @@ function MyList() {
   // Get non-overlapping intervals
   const getNewIntervals = (pendingIntervals, existingIntervals, duration) => {
     if (!pendingIntervals.length) return []
-    // Round and merge pending intervals
-    const roundedPending = pendingIntervals.map(([start, end]) => [
-      Math.max(0, Math.round(start * 10) / 10),
-      Math.min(duration, Math.round(end * 10) / 10)
-    ]).filter(([s, e]) => s < e)
+    const roundedPending = pendingIntervals
+      .map(([start, end]) => [
+        Math.max(0, Math.round(start * 10) / 10),
+        Math.min(duration, Math.round(end * 10) / 10)
+      ])
+      .filter(([s, e]) => s < e)
     const mergedPending = mergeIntervals(roundedPending)
-    
     const newIntervals = []
     for (let [start, end] of mergedPending) {
       let overlap = false
       for (const [existStart, existEnd] of existingIntervals) {
-        // Check for any overlap
         if (!(end <= existStart || start >= existEnd)) {
           overlap = true
-          // Keep only non-overlapping segments
           if (start < existStart) {
             newIntervals.push([start, Math.min(end, existStart)])
           }
@@ -135,32 +157,43 @@ function MyList() {
     data.isPlaying = true
     data.startTime = videoElement.currentTime
     data.videoElement = videoElement
-    if (progressData[videoId]?.last_watched_position && videoElement.currentTime === 0) {
-      videoElement.currentTime = progressData[videoId].last_watched_position
+  }
+
+  const handleLoadedMetadata = (videoId, videoElement) => {
+    console.log(`Video ${videoId} metadata loaded`)
+    const data = playbackData.current[videoId]
+    const lastPosition = progressData[videoId]?.last_watched_position || 0
+    const duration = videoElement.duration
+    if (lastPosition > 0 && lastPosition < duration && videoElement.currentTime === 0) {
+      console.log(`Resuming video ${videoId} at ${lastPosition}s`)
+      videoElement.currentTime = lastPosition
+      data.lastSavedPosition = lastPosition
     }
   }
 
   const handlePause = (videoId, videoElement) => {
-    console.log(`Video ${videoId} paused`)
+    console.log(`Video ${videoId} paused at ${videoElement.currentTime}s`)
     const data = playbackData.current[videoId]
     if (data.isPlaying && data.startTime !== null) {
       const endTime = videoElement.currentTime
       if (endTime > data.startTime) {
         data.pendingIntervals.push([data.startTime, endTime])
-        saveProgress(videoId)
       }
     }
     data.isPlaying = false
     data.startTime = null
+    data.lastSavedPosition = videoElement.currentTime
+    saveProgress(videoId, videoElement.currentTime)
   }
 
   const handleTimeUpdate = (videoId, videoElement) => {
     const data = playbackData.current[videoId]
     const now = videoElement.currentTime
+    data.lastSavedPosition = now
     if (data.isPlaying && now - data.lastSavedTime >= 15) {
       if (data.startTime !== null && now > data.startTime) {
         data.pendingIntervals.push([data.startTime, now])
-        saveProgress(videoId)
+        saveProgress(videoId, now)
       }
       data.startTime = now
       data.lastSavedTime = now
@@ -168,23 +201,24 @@ function MyList() {
   }
 
   const handleSeeking = (videoId, videoElement) => {
-    console.log(`Video ${videoId} seeking to ${videoElement.currentTime}`)
+    console.log(`Video ${videoId} seeking to ${videoElement.currentTime}s`)
     const data = playbackData.current[videoId]
     if (data.isPlaying && data.startTime !== null) {
       const endTime = videoElement.currentTime
       if (endTime > data.startTime) {
         data.pendingIntervals.push([data.startTime, endTime])
-        saveProgress(videoId)
       }
     }
     data.startTime = videoElement.currentTime
     data.lastSavedTime = videoElement.currentTime
+    data.lastSavedPosition = videoElement.currentTime
+    saveProgress(videoId, videoElement.currentTime)
   }
 
   // Save progress
-  const saveProgress = async (videoId) => {
+  const saveProgress = async (videoId, currentTime) => {
     const data = playbackData.current[videoId]
-    if (!data.pendingIntervals.length) return
+    if (!data.videoElement) return
 
     const video = videos.find((item) => item.video.id === videoId)
     if (!video) return
@@ -192,17 +226,16 @@ function MyList() {
     const existingIntervals = progressData[videoId]?.intervals || []
     const newIntervals = getNewIntervals(data.pendingIntervals, existingIntervals, video.video.duration)
 
-    if (!newIntervals.length) {
-      console.log(`No new intervals for video ${videoId}`)
-      data.pendingIntervals = []
-      return
-    }
-
-    console.log(`Saving progress for video ${videoId}`, { newIntervals, pending: data.pendingIntervals, existing: existingIntervals })
+    console.log(`Saving progress for video ${videoId}`, {
+      currentTime,
+      newIntervals,
+      pending: data.pendingIntervals,
+      existing: existingIntervals
+    })
     try {
       const response = await axios.post('http://localhost:8000/api/progress/update_progress/', {
         video_id: videoId,
-        current_time: data.videoElement.currentTime,
+        current_time: currentTime,
         intervals: newIntervals.map(([start, end]) => ({
           start_time: start,
           end_time: end
@@ -288,6 +321,7 @@ function MyList() {
                     onPause={(e) => handlePause(videoId, e.target)}
                     onTimeUpdate={(e) => handleTimeUpdate(videoId, e.target)}
                     onSeeking={(e) => handleSeeking(videoId, e.target)}
+                    onLoadedMetadata={(e) => handleLoadedMetadata(videoId, e.target)}
                     onError={(e) => handleVideoError(e, item.video.title)}
                   >
                     <source src={getVideoUrl(item.video.video_file)} type="video/mp4" />
