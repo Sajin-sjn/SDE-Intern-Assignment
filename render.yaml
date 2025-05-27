@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: myapp-backend
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn project.wsgi
+    envVars:
+      - key: DEBUG
+        value: "False"
+      - key: SECRET_KEY
+        value: i2t$+@o(4!y4j$^d-@z&-m%$i@zv8=5d+v4p1=ry&n-n-8z%-2
+      - key: ALLOWED_HOSTS
+        value: myapp-backend.onrender.com

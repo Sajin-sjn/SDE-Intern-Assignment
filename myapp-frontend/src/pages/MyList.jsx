@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import axios from 'axios'
 import { AuthContext } from '../context/AuthContext'
 import 'bootstrap-icons/font/bootstrap-icons.css'
+import api from '../api/axios'
 
 function MyList() {
   const { user } = useContext(AuthContext)
@@ -19,8 +20,8 @@ function MyList() {
       setLoading(true)
       try {
         const [listResponse, progressResponse] = await Promise.all([
-          axios.get('http://localhost:8000/api/my-list/'),
-          axios.get('http://localhost:8000/api/progress/')
+          api.get('/api/my-list/'),
+          api.get('/api/progress/')
         ])
         console.log('Fetched list:', listResponse.data)
         console.log('Fetched progress:', progressResponse.data)
@@ -93,7 +94,7 @@ function MyList() {
   const handleRemoveFromList = async (videoId) => {
     console.log(`Removing video ${videoId}`)
     try {
-      await axios.delete(`http://localhost:8000/api/my-list/${videoId}/remove/`)
+      await api.delete(`/api/my-list/${videoId}/remove/`)
       setVideos(videos.filter((item) => item.video.id !== videoId))
       setError('')
     } catch (err) {
@@ -233,7 +234,7 @@ function MyList() {
       existing: existingIntervals
     })
     try {
-      const response = await axios.post('http://localhost:8000/api/progress/update_progress/', {
+      const response = await api.post('/api/progress/update_progress/', {
         video_id: videoId,
         current_time: currentTime,
         intervals: newIntervals.map(([start, end]) => ({
@@ -279,7 +280,7 @@ function MyList() {
   const getVideoUrl = (videoFile) => {
     return videoFile.startsWith('http://') || videoFile.startsWith('https://')
       ? videoFile
-      : `http://localhost:8000${videoFile}`
+      : `https://myapp-backend-4m41.onrender.com${videoFile}`
   }
 
   const handleVideoError = (event, videoTitle) => {

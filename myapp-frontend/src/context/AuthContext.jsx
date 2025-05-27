@@ -1,6 +1,7 @@
 import { createContext, useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
+import api from '../api/axios';
 
 const AuthContext = createContext();
 
@@ -66,8 +67,8 @@ export const AuthProvider = ({ children }) => {
     if (token && !user) {
       console.log('[AuthContext] Validating token:', token);
       setLoading(true);
-      axios
-        .get('http://localhost:8000/api/users/me/')
+      api
+        .get('/api/users/me/')
         .then((response) => {
           console.log('[AuthContext] User data:', response.data);
           setUser({
@@ -88,7 +89,7 @@ export const AuthProvider = ({ children }) => {
     try {
       console.log('[AuthContext] Logging in:', username);
       setLoading(true);
-      const response = await axios.post('http://localhost:8000/api/login/', {
+      const response = await api.post('/api/login/', {
         username,
         password,
       });
@@ -109,7 +110,7 @@ export const AuthProvider = ({ children }) => {
     console.log('[AuthContext] Attempting to register:', { username, email });
     try {
       setLoading(true);
-      const response = await axios.post('http://localhost:8000/api/users/register/', {
+      const response = await api.post('/api/users/register/', {
         username,
         email,
         password,

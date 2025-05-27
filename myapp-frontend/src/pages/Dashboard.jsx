@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom'
 import axios from 'axios'
 import { AuthContext } from '../context/AuthContext'
 import 'bootstrap-icons/font/bootstrap-icons.css'
+import api from '../api/axios';
+
 
 function Dashboard() {
   const { user } = useContext(AuthContext)
@@ -17,7 +19,7 @@ function Dashboard() {
       console.log('Fetching videos...')
       setLoading(true)
       try {
-        const response = await axios.get('http://localhost:8000/api/videos/')
+        const response = await api.get('/api/videos/')
         console.log('Fetched videos:', response.data)
         setVideos(response.data)
         setError('')
@@ -39,7 +41,7 @@ function Dashboard() {
     }
     try {
       console.log('Sending POST /api/my-list/ with payload:', { video_id: videoId })
-      await axios.post('http://localhost:8000/api/my-list/', { video_id: videoId })
+      await api.post('/api/my-list/', { video_id: videoId })
       setVideos(
         videos.map((video) =>
           video.id === videoId ? { ...video, is_in_user_list: true } : video
@@ -66,7 +68,7 @@ function Dashboard() {
   const handleRemoveFromList = async (videoId) => {
     console.log(`Removing video ${videoId} from list, user:`, user)
     try {
-      await axios.delete(`http://localhost:8000/api/my-list/${videoId}/remove/`)
+      await api.delete(`/api/my-list/${videoId}/remove/`)
       setVideos(
         videos.map((video) =>
           video.id === videoId ? { ...video, is_in_user_list: false } : video
@@ -98,7 +100,7 @@ function Dashboard() {
     // If video_file is already an absolute URL, use it; otherwise, prepend base URL
     return videoFile.startsWith('http://') || videoFile.startsWith('https://')
       ? videoFile
-      : `http://localhost:8000${videoFile}`
+      : `https://myapp-backend-4m41.onrender.com${videoFile}`
   }
 
   const handleVideoError = (event, videoTitle) => {

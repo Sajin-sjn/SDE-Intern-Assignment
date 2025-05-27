@@ -1,6 +1,7 @@
 import { useState, useEffect, useContext } from 'react';
 import axios from 'axios';
 import { AuthContext } from '../context/AuthContext';
+import api from '../api/axios';
 
 function ManageVideos() {
   const { user } = useContext(AuthContext);
@@ -23,8 +24,8 @@ function ManageVideos() {
     setLoading(true);
     const source = axios.CancelToken.source();
 
-    axios
-      .get('http://localhost:8000/api/videos/', { cancelToken: source.token })
+    api
+      .get('/api/videos/', { cancelToken: source.token })
       .then((response) => {
         console.log('[ManageVideos] Fetched videos:', response.data);
         setVideos(response.data);
@@ -76,14 +77,14 @@ function ManageVideos() {
 
     try {
       if (editVideo) {
-        const response = await axios.patch(`http://localhost:8000/api/videos/${editVideo.id}/`, data, {
+        const response = await api.patch(`/api/videos/${editVideo.id}/`, data, {
           headers: { 'Content-Type': 'multipart/form-data' },
         });
         setVideos(videos.map((v) => (v.id === editVideo.id ? response.data : v)));
         setSuccessMessage('Video updated successfully');
         setEditVideo(null);
       } else {
-        const response = await axios.post('http://localhost:8000/api/videos/', data, {
+        const response = await api.post('/api/videos/', data, {
           headers: { 'Content-Type': 'multipart/form-data' },
         });
         setVideos([...videos, response.data]);
@@ -115,7 +116,7 @@ function ManageVideos() {
     if (!window.confirm('Are you sure you want to delete this video?')) return;
     setLoading(true);
     try {
-      await axios.delete(`http://localhost:8000/api/videos/${id}/`);
+      await api.delete(`/api/videos/${id}/`);
       setVideos(videos.filter((v) => v.id !== id));
       setSuccessMessage('Video deleted successfully');
       setTimeout(() => setSuccessMessage(''), 3000);
