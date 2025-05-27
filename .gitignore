@@ -1,0 +1,21 @@
+# Ignore virtual environment folder inside myapp-backend
+myapp-backend/venv/
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Django stuff:
+*.log
+*.pot
+*.pyc
+db.sqlite3
+media/
+
+# If you want to ignore IDE/editor configs (optional)
+.vscode/
+.idea/
+
+# Ignore Python environment files
+.env
