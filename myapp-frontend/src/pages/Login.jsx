@@ -1,46 +1,36 @@
-import { useState, useContext, useEffect } from 'react'
-import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { AuthContext } from '../context/AuthContext'
+import { useState, useContext } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { AuthContext } from '../context/AuthContext';
 
 function Login() {
   const [formData, setFormData] = useState({
     username: '',
     password: '',
-  })
-  const [error, setError] = useState('')
-  const [successMessage, setSuccessMessage] = useState('')
-  const { login, loading } = useContext(AuthContext)
-  const navigate = useNavigate()
-  const location = useLocation()
-
-  useEffect(() => {
-    const params = new URLSearchParams(location.search)
-    if (params.get('success') === 'true') {
-      setSuccessMessage('Registration successful')
-    }
-  }, [location])
+  });
+  const [error, setError] = useState('');
+  const { login, loading } = useContext(AuthContext);
+  const navigate = useNavigate();
 
   const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value })
-  }
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
 
   const handleSubmit = async (e) => {
-    e.preventDefault()
+    e.preventDefault();
     if (!formData.username || !formData.password) {
-      setError('All fields are required')
-      return
+      setError('All fields are required');
+      return;
     }
-    const result = await login(formData.username, formData.password)
+    const result = await login(formData.username, formData.password);
     if (!result.success) {
-      setError(result.error)
+      setError(result.error);
     }
-  }
+  };
 
   return (
     <div className="d-flex flex-column align-items-center justify-content-center min-vh-100 bg-light">
       <div className="card p-4 shadow" style={{ maxWidth: '400px', width: '100%' }}>
         <h1 className="display-5 fw-bold text-dark mb-4 text-center">Login</h1>
-        {successMessage && <div className="alert alert-success">{successMessage}</div>}
         {error && <div className="alert alert-danger">{error}</div>}
         <form onSubmit={handleSubmit}>
           <div className="mb-3">
@@ -86,7 +76,7 @@ function Login() {
         </p>
       </div>
     </div>
-  )
+  );
 }
 
-export default Login
+export default Login;

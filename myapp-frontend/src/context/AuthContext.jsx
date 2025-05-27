@@ -2,7 +2,7 @@ import { createContext, useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 
-export const AuthContext = createContext();
+const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(JSON.parse(localStorage.getItem('user')) || null);
@@ -29,8 +29,8 @@ export const AuthProvider = ({ children }) => {
 
     const responseInterceptor = axios.interceptors.response.use(
       (response) => response,
-      (error) => {
-        console.error('[AuthContext] Response error:', error.response?.status, error.response?.data);
+      (success) => {
+        console.error('[AuthContext] Response error:', success.response?.status, error.response?.data);
         if (error.response?.status === 401) {
           console.log('[AuthContext] 401 error, logging out');
           logout();
@@ -162,3 +162,5 @@ export const AuthProvider = ({ children }) => {
     </AuthContext.Provider>
   );
 };
+
+export { AuthContext };

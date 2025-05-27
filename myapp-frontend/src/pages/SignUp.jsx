@@ -31,9 +31,10 @@ function SignUp() {
       console.log('[SignUp] Registration result received:', result);
 
       if (result.success) {
-        console.log('[SignUp] Registration successful, clearing form and navigating to /login');
+        console.log('[SignUp] Registration successful, showing alert and navigating to /login');
+        alert('Registration successful');
         setFormData({ username: '', email: '', password: '' });
-        navigate('/login?success=true');
+        navigate('/login');
       } else {
         console.log('[SignUp] Registration failed, showing alert:', result.error);
         alert(typeof result.error === 'string' ? result.error : 'Registration failed');
