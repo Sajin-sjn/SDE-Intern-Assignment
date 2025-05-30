@@ -297,4 +297,4 @@ export const AuthProvider = ({ children }) => {
   );
 };
 
-export { AuthContext, AuthProvider };
+export { AuthContext };
