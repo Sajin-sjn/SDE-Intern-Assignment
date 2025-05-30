@@ -320,7 +320,7 @@ function ManageVideos() {
     const controller = new AbortController();
 
     api
-      .get('/api/videos/', { signal: controller.signal })
+      .get('/videos/', { signal: controller.signal })
       .then((response) => {
         console.log('[ManageVideos] Fetched videos:', response.data);
         setVideos(response.data);
@@ -348,10 +348,10 @@ function ManageVideos() {
 
   const handleChange = (e) => {
     const { name, value, files } = e.target;
-    setFormData({
-      ...formData,
+    setFormData((prev) => ({
+      ...prev,
       [name]: files ? files[0] : value,
-    });
+    }));
   };
 
   const handleSubmit = async (e) => {
@@ -376,17 +376,17 @@ function ManageVideos() {
         duration: formData.duration,
       });
       if (editVideo) {
-        const response = await api.patch(`/api/videos/${editVideo.id}/`, data, {
+        const response = await api.patch(`/videos/${editVideo.id}/`, data, {
           headers: { 'Content-Type': 'multipart/form-data' },
         });
         setVideos(videos.map((v) => (v.id === editVideo.id ? response.data : v)));
         setSuccessMessage('Video updated successfully');
         setEditVideo(null);
       } else {
-        const response = await api.post('/api/videos/', data, {
+        const response = await api.post('/videos/', data, {
           headers: { 'Content-Type': 'multipart/form-data' },
         });
-        setVideos([...videos, response.data]);
+        setVideos((prev) => [...prev, response.data]);
         setSuccessMessage('Video added successfully');
       }
       setFormData({ title: '', description: '', video_file: null, duration: '' });
@@ -407,7 +407,7 @@ function ManageVideos() {
     setEditVideo(video);
     setFormData({
       title: video.title,
-      description: video.description,
+      description: video.description || '',
       video_file: null,
       duration: video.duration.toString(),
     });
@@ -419,12 +419,15 @@ function ManageVideos() {
     if (!window.confirm('Are you sure you want to delete this video?')) return;
     setLoading(true);
     try {
-      await api.delete(`/api/videos/${id}/`);
-      setVideos(videos.filter((v) => v.id !== id));
+      await api.delete(`/videos/${id}/`);
+      setVideos((prev) => prev.filter((v) => v.id !== id));
       setSuccessMessage('Video deleted successfully');
       setTimeout(() => setSuccessMessage(''), 3000);
     } catch (err) {
-      console.error('[ManageVideos] Error deleting video:', err.response?.data);
+      console.error('[ManageVideos] Error deleting video:', {
+        status: err.response?.status,
+        data: err.response?.data,
+      });
       setError(err.response?.data?.detail || 'Failed to delete video');
     } finally {
       setLoading(false);
@@ -432,24 +435,29 @@ function ManageVideos() {
   };
 
   const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: 'numeric',
-      minute: 'numeric',
-      hour12: true,
-    });
+    try {
+      return new Date(dateString).toLocaleString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: 'numeric',
+        hour12: true,
+      });
+    } catch {
+      return 'Invalid date';
+    }
   };
 
   const formatDuration = (seconds) => {
+    if (typeof seconds !== 'number' || seconds < 0) return '00:00';
     const mins = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60);
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
   return (
-    <div className="container py-5" style={{ background: '#f0f0f0', minHeight: '100vh' }}>
+    <div className="container py-5" style={{ backgroundColor: '#f0f0f0', minHeight: '100vh' }}>
       <h1 className="display-5 fw-bold text-dark mb-4">Manage Videos</h1>
       <p className="text-muted mb-5">Welcome, {user?.username || 'Admin'}! Manage your video content.</p>
 
@@ -459,7 +467,9 @@ function ManageVideos() {
         {error && <div className="alert alert-danger">{error}</div>}
         <form onSubmit={handleSubmit}>
           <div className="mb-3">
-            <label htmlFor="title" className="form-label">Title</label>
+            <label htmlFor="title" className="form-label">
+              Title
+            </label>
             <input
               type="text"
               className="form-control"
@@ -472,16 +482,18 @@ function ManageVideos() {
             />
           </div>
           <div className="mb-3">
-            <label htmlFor="description" className="form-label">Description</label>
+            <label htmlFor="description" className="form-label">
+              Description
+            </label>
             <textarea
               className="form-control"
               id="description"
               name="description"
               value={formData.description}
               onChange={handleChange}
-              rows="4"
+              rows={4}
               disabled={loading}
-            ></textarea>
+            />
           </div>
           <div className="mb-3">
             <label htmlFor="video_file" className="form-label">
@@ -499,7 +511,9 @@ function ManageVideos() {
             />
           </div>
           <div className="mb-3">
-            <label htmlFor="duration" className="form-label">Duration (seconds)</label>
+            <label htmlFor="duration" className="form-label">
+              Duration (seconds)
+            </label>
             <input
               type="number"
               className="form-control"
@@ -516,7 +530,7 @@ function ManageVideos() {
           <div className="d-flex gap-2">
             <button type="submit" className="btn btn-primary flex-grow-1" disabled={loading}>
               {loading ? (
-                <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true" />
               ) : editVideo ? (
                 'Update Video'
               ) : (
@@ -545,7 +559,7 @@ function ManageVideos() {
         <h3 className="mb-4">Existing Videos</h3>
         {loading ? (
           <div className="text-center">
-            <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+            <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true" />
             <span className="ms-2">Loading videos...</span>
           </div>
         ) : videos.length === 0 ? (
@@ -557,10 +571,15 @@ function ManageVideos() {
                 <div>
                   <h5>{video.title}</h5>
                   <p>{video.description || 'No description'}</p>
-                  <p className="text-muted mb-1">Uploaded by: {video.uploaded_by}</p>
+                  <p className="text-muted mb-1">Uploaded by: {video.uploaded_by || 'Unknown'}</p>
                   <p className="text-muted mb-1">Created: {formatDate(video.created_at)}</p>
                   <p className="text-muted mb-1">Duration: {formatDuration(video.duration)}</p>
-                  <a href={video.video_file} target="_blank" rel="noopener noreferrer" className="text-primary">
+                  <a
+                    href={video.video_file}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-primary"
+                  >
                     Watch Video
                   </a>
                 </div>
